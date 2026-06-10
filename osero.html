@@ -1,1 +1,481 @@
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Crystal Othello</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Rajdhani:wght@300;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --frost:rgba(255,255,255,0.06);
+  --border-ice:rgba(255,255,255,0.14);
+  --border-ice2:rgba(255,255,255,0.08);
+  --shine:rgba(255,255,255,0.28);
+  --accent:#7ec8f4;
+  --text-dark:rgba(210,235,255,0.92);
+  --text-mid:rgba(140,185,230,0.72);
+  --text-light:rgba(90,135,190,0.6);
+  --cell-empty:rgba(255,255,255,0.045);
+  --hint-glow:rgba(126,200,244,0.16);
+}
+html,body{
+  width:100%;min-height:100vh;
+  background:
+    radial-gradient(ellipse at 25% 5%, #0e2244 0%, transparent 50%),
+    radial-gradient(ellipse at 78% 15%, #071630 0%, transparent 48%),
+    radial-gradient(ellipse at 50% 95%, #0c1e38 0%, transparent 55%),
+    linear-gradient(168deg,#050d1a 0%,#091624 50%,#060f1e 100%);
+  display:flex;flex-direction:column;align-items:center;
+  font-family:'Rajdhani',sans-serif;overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse at 15% 35%,rgba(15,60,140,0.15) 0%,transparent 45%),
+    radial-gradient(ellipse at 88% 55%,rgba(8,45,110,0.12) 0%,transparent 42%),
+    radial-gradient(ellipse at 50% 3%,rgba(30,80,160,0.1) 0%,transparent 48%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(circle at 22% 18%,rgba(126,200,244,0.1) 0%,transparent 5px),
+    radial-gradient(circle at 77% 10%,rgba(180,220,255,0.06) 0%,transparent 3px),
+    radial-gradient(circle at 58% 78%,rgba(126,200,244,0.08) 0%,transparent 4px),
+    radial-gradient(circle at 7% 68%,rgba(150,210,255,0.06) 0%,transparent 3px),
+    radial-gradient(circle at 93% 82%,rgba(126,200,244,0.07) 0%,transparent 4px);
+}
+.container{
+  width:100%;max-width:420px;padding:20px 14px 28px;
+  display:flex;flex-direction:column;align-items:center;
+  gap:12px;position:relative;z-index:1;
+}
+/* Header */
+.header{width:100%;text-align:center;padding:8px 0;}
+.title{
+  font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;letter-spacing:10px;
+  color:var(--text-dark);
+  text-shadow:0 0 30px rgba(126,200,244,0.25),0 1px 0 rgba(255,255,255,0.08);
+}
+.subtitle{font-size:10px;letter-spacing:4px;color:var(--text-light);margin-top:3px;font-weight:300;text-transform:uppercase;}
+
+/* Glass base */
+.glass{
+  background:var(--frost);
+  border:1px solid var(--border-ice);
+  border-radius:20px;
+  backdrop-filter:blur(24px) saturate(160%);
+  -webkit-backdrop-filter:blur(24px) saturate(160%);
+  position:relative;overflow:hidden;
+}
+.glass::before{
+  content:'';position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--shine),transparent);pointer-events:none;
+}
+.glass::after{
+  content:'';position:absolute;top:0;left:0;width:35%;bottom:0;
+  background:linear-gradient(90deg,rgba(255,255,255,0.04),transparent);
+  pointer-events:none;border-radius:20px 0 0 20px;
+}
+
+/* Score panel */
+.score-panel{width:100%;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
+.score-side{display:flex;align-items:center;gap:10px;flex:1;}
+.score-side.right{justify-content:flex-end;}
+.disc-icon{width:30px;height:30px;border-radius:50%;flex-shrink:0;transition:all 0.3s;}
+.disc-icon.black{
+  background:
+    radial-gradient(circle at 33% 28%,rgba(126,200,244,0.18) 0%,transparent 40%),
+    rgba(8,18,38,0.55);
+  border:1px solid rgba(126,200,244,0.25);
+  box-shadow:inset 0 2px 5px rgba(126,200,244,0.12),0 0 10px rgba(0,0,0,0.5);
+  backdrop-filter:blur(4px);
+}
+.disc-icon.white{
+  background:
+    radial-gradient(circle at 30% 25%,rgba(255,255,255,0.55) 0%,rgba(200,230,255,0.3) 50%,rgba(150,210,255,0.18) 100%);
+  border:1px solid rgba(255,255,255,0.45);
+  box-shadow:inset 0 2px 6px rgba(255,255,255,0.3),0 0 10px rgba(126,200,244,0.15);
+  backdrop-filter:blur(4px);
+}
+.score-info .score-label{font-size:9px;color:var(--text-light);letter-spacing:3px;text-transform:uppercase;}
+.score-info .score-num{font-size:28px;font-weight:500;line-height:1;color:var(--text-dark);font-family:'Cormorant Garamond',serif;}
+.score-side.active .score-num{color:var(--accent);}
+.score-side.active .disc-icon.black{box-shadow:inset 0 2px 5px rgba(126,200,244,0.2),0 0 18px rgba(126,200,244,0.35);}
+.score-side.active .disc-icon.white{box-shadow:inset 0 2px 6px rgba(255,255,255,0.35),0 0 18px rgba(126,200,244,0.3);}
+.vs-badge{font-size:10px;letter-spacing:3px;color:var(--text-light);padding:5px 12px;border:1px solid var(--border-ice2);border-radius:20px;background:rgba(255,255,255,0.03);}
+
+/* Difficulty */
+.diff-row{width:100%;display:flex;gap:6px;align-items:center;}
+.diff-label{font-size:10px;letter-spacing:2px;color:var(--text-light);white-space:nowrap;}
+.diff-btn{
+  flex:1;padding:7px 0;border-radius:10px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border-ice2);
+  color:var(--text-mid);font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:2px;
+  cursor:pointer;transition:all 0.2s;text-transform:uppercase;backdrop-filter:blur(8px);
+}
+.diff-btn.active{background:rgba(126,200,244,0.1);border-color:rgba(126,200,244,0.35);color:var(--accent);}
+
+/* Status */
+.status-bar{
+  width:100%;padding:9px 16px;text-align:center;font-size:13px;letter-spacing:1px;
+  color:var(--text-mid);min-height:38px;display:flex;align-items:center;justify-content:center;
+}
+.turn-indicator{color:var(--accent);font-weight:500;}
+
+/* Board */
+.board-wrapper{width:100%;padding:10px;}
+.board{
+  display:grid;grid-template-columns:repeat(8,1fr);gap:3px;
+  background:rgba(255,255,255,0.03);border-radius:14px;padding:5px;
+  border:1px solid rgba(255,255,255,0.09);
+}
+.cell{
+  aspect-ratio:1;border-radius:7px;
+  background:var(--cell-empty);border:1px solid rgba(255,255,255,0.07);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;transition:background 0.2s,border-color 0.2s;overflow:hidden;
+}
+.cell::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:45%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.06),transparent);
+  border-radius:7px 7px 0 0;pointer-events:none;
+}
+.cell:active{background:rgba(126,200,244,0.1);}
+.cell.hint{background:var(--hint-glow);border-color:rgba(126,200,244,0.25);}
+.cell.hint::after{
+  content:'';position:absolute;width:26%;height:26%;border-radius:50%;
+  background:rgba(126,200,244,0.55);
+  box-shadow:0 0 10px rgba(126,200,244,0.7),0 0 3px rgba(255,255,255,0.4);
+}
+
+/* ── DISCS ── */
+.disc{width:80%;height:80%;border-radius:50%;position:relative;flex-shrink:0;}
+.disc.flip{animation:flip3d 0.4s ease-in-out;}
+@keyframes flip3d{
+  0%{transform:rotateY(0) scale(1);}
+  45%{transform:rotateY(90deg) scale(0.78);}
+  55%{transform:rotateY(90deg) scale(0.78);}
+  100%{transform:rotateY(180deg) scale(1);}
+}
+
+/* Black — smoked glass / ink in water */
+.disc.black{
+  background:
+    radial-gradient(circle at 33% 28%, rgba(126,200,244,0.22) 0%, transparent 38%),
+    radial-gradient(circle at 65% 68%, rgba(0,30,70,0.4) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(10,22,50,0.7) 0%, rgba(5,12,28,0.85) 100%);
+  border:1px solid rgba(126,200,244,0.2);
+  box-shadow:
+    inset 0 3px 8px rgba(126,200,244,0.1),
+    inset 0 -2px 5px rgba(0,0,0,0.5),
+    0 4px 20px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(255,255,255,0.04);
+  /* Key: semi-transparent so board shows through */
+  backdrop-filter:blur(2px);
+}
+.disc.black::after{
+  content:'';position:absolute;top:11%;left:18%;width:36%;height:16%;border-radius:50%;
+  background:rgba(180,220,255,0.22);transform:rotate(-25deg);filter:blur(2px);
+}
+
+/* White — ice / frozen water drop */
+.disc.white{
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.72) 0%, rgba(220,240,255,0.45) 35%, rgba(180,220,255,0.22) 65%, rgba(140,200,255,0.12) 100%);
+  border:1px solid rgba(255,255,255,0.55);
+  box-shadow:
+    inset 0 4px 10px rgba(255,255,255,0.45),
+    inset 0 -3px 8px rgba(126,200,244,0.2),
+    inset 3px 0 8px rgba(255,255,255,0.25),
+    0 4px 20px rgba(0,10,40,0.45),
+    0 0 0 1px rgba(255,255,255,0.1);
+  /* True transparency — background bleeds through */
+  backdrop-filter:blur(1px) brightness(1.15);
+}
+.disc.white::before{
+  content:'';position:absolute;top:9%;left:14%;width:42%;height:20%;border-radius:50%;
+  background:rgba(255,255,255,0.75);transform:rotate(-22deg);filter:blur(2px);
+}
+.disc.white::after{
+  content:'';position:absolute;bottom:12%;right:14%;width:22%;height:11%;border-radius:50%;
+  background:rgba(126,200,244,0.35);filter:blur(3px);
+}
+
+/* Controls */
+.controls{width:100%;display:flex;gap:8px;}
+.btn{
+  flex:1;padding:11px 0;border-radius:14px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border-ice);
+  color:var(--text-mid);font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:2px;
+  cursor:pointer;transition:all 0.2s;text-transform:uppercase;backdrop-filter:blur(12px);
+}
+.btn:active{background:rgba(126,200,244,0.1);border-color:rgba(126,200,244,0.35);color:var(--accent);transform:scale(0.97);}
+.btn.primary{background:rgba(126,200,244,0.08);border-color:rgba(126,200,244,0.28);color:var(--accent);}
+
+/* Modal */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(4,10,24,0.7);backdrop-filter:blur(18px);
+  z-index:100;align-items:center;justify-content:center;
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:rgba(12,24,50,0.75);border:1px solid rgba(255,255,255,0.12);
+  border-radius:28px;padding:36px 28px;text-align:center;
+  width:82%;max-width:320px;
+  backdrop-filter:blur(30px) saturate(140%);
+  box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(126,200,244,0.08);
+  position:relative;overflow:hidden;
+}
+.modal::before{
+  content:'';position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent);
+}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;letter-spacing:5px;color:var(--accent);}
+.modal-result{font-size:13px;color:var(--text-mid);margin:12px 0 26px;letter-spacing:1px;line-height:1.8;}
+.modal-btn{
+  width:100%;padding:13px;border-radius:14px;
+  background:rgba(126,200,244,0.08);border:1px solid rgba(126,200,244,0.28);
+  color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;
+  cursor:pointer;text-transform:uppercase;transition:all 0.2s;
+}
+.modal-btn:active{background:rgba(126,200,244,0.18);transform:scale(0.98);}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="title">OTHELLO</div>
+    <div class="subtitle">Crystal Edition · CPU対戦</div>
+  </div>
+
+  <div class="glass score-panel">
+    <div class="score-side" id="side-black">
+      <div class="disc-icon black"></div>
+      <div class="score-info">
+        <div class="score-label">あなた</div>
+        <div class="score-num" id="score-black">2</div>
+      </div>
+    </div>
+    <div class="vs-badge">VS</div>
+    <div class="score-side right" id="side-white">
+      <div class="score-info" style="text-align:right">
+        <div class="score-label">CPU</div>
+        <div class="score-num" id="score-white">2</div>
+      </div>
+      <div class="disc-icon white"></div>
+    </div>
+  </div>
+
+  <div class="diff-row">
+    <span class="diff-label">LEVEL</span>
+    <button class="diff-btn active" onclick="setDiff('easy',this)">EASY</button>
+    <button class="diff-btn" onclick="setDiff('normal',this)">NORMAL</button>
+    <button class="diff-btn" onclick="setDiff('hard',this)">HARD</button>
+  </div>
+
+  <div class="glass status-bar" id="status">あなたの番です</div>
+
+  <div class="glass board-wrapper">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" onclick="newGame()">NEW GAME</button>
+    <button class="btn" onclick="toggleHints()">HINT <span id="hint-state">ON</span></button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">GAME OVER</div>
+    <div class="modal-result" id="modal-result"></div>
+    <button class="modal-btn" onclick="newGame();document.getElementById('modal').classList.remove('show')">もう一度プレイ</button>
+  </div>
+</div>
+
+<script>
+const EMPTY=0,BLACK=1,WHITE=2;
+const DIRS=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const WEIGHTS=[[120,-20,20,5,5,20,-20,120],[-20,-40,-5,-5,-5,-5,-40,-20],[20,-5,15,3,3,15,-5,20],[5,-5,3,3,3,3,-5,5],[5,-5,3,3,3,3,-5,5],[20,-5,15,3,3,15,-5,20],[-20,-40,-5,-5,-5,-5,-40,-20],[120,-20,20,5,5,20,-20,120]];
+let board=[],turn=BLACK,gameOver=false,showHints=true,difficulty='easy',cpuThinking=false;
+
+function initBoard(){
+  board=Array.from({length:8},()=>Array(8).fill(EMPTY));
+  board[3][3]=WHITE;board[3][4]=BLACK;board[4][3]=BLACK;board[4][4]=WHITE;
+  turn=BLACK;gameOver=false;cpuThinking=false;
+}
+function getFlips(b,r,c,color){
+  const opp=color===BLACK?WHITE:BLACK;let flips=[];
+  for(const[dr,dc]of DIRS){
+    let line=[],nr=r+dr,nc=c+dc;
+    while(nr>=0&&nr<8&&nc>=0&&nc<8&&b[nr][nc]===opp){line.push([nr,nc]);nr+=dr;nc+=dc;}
+    if(line.length&&nr>=0&&nr<8&&nc>=0&&nc<8&&b[nr][nc]===color)flips=[...flips,...line];
+  }
+  return flips;
+}
+function validMoves(b,color){
+  let moves=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++)
+    if(b[r][c]===EMPTY&&getFlips(b,r,c,color).length)moves.push([r,c]);
+  return moves;
+}
+function countColor(b,color){return b.flat().filter(v=>v===color).length;}
+function scoreBoard(b,color){
+  const opp=color===BLACK?WHITE:BLACK;let s=0;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    if(b[r][c]===color)s+=WEIGHTS[r][c];else if(b[r][c]===opp)s-=WEIGHTS[r][c];
+  }
+  s+=(validMoves(b,color).length-validMoves(b,opp).length)*10;
+  s+=(countColor(b,color)-countColor(b,opp))*2;return s;
+}
+function minimax(b,depth,alpha,beta,maximizing,color){
+  const opp=color===BLACK?WHITE:BLACK;const cur=maximizing?color:opp;
+  const moves=validMoves(b,cur);
+  if(depth===0||moves.length===0)return scoreBoard(b,color);
+  if(maximizing){
+    let best=-Infinity;
+    for(const[r,c]of moves){
+      const nb=b.map(row=>[...row]);const fl=getFlips(nb,r,c,cur);
+      nb[r][c]=cur;fl.forEach(([fr,fc])=>nb[fr][fc]=cur);
+      best=Math.max(best,minimax(nb,depth-1,alpha,beta,false,color));
+      alpha=Math.max(alpha,best);if(alpha>=beta)break;
+    }return best;
+  }else{
+    let best=Infinity;
+    for(const[r,c]of moves){
+      const nb=b.map(row=>[...row]);const fl=getFlips(nb,r,c,cur);
+      nb[r][c]=cur;fl.forEach(([fr,fc])=>nb[fr][fc]=cur);
+      best=Math.min(best,minimax(nb,depth-1,alpha,beta,true,color));
+      beta=Math.min(beta,best);if(alpha>=beta)break;
+    }return best;
+  }
+}
+function cpuMove(){
+  const moves=validMoves(board,WHITE);if(!moves.length)return;
+  let chosen;
+  if(difficulty==='easy'){chosen=moves[Math.floor(Math.random()*moves.length)];}
+  else{
+    const depth=difficulty==='hard'?5:3;let best=-Infinity,bestMoves=[];
+    for(const[r,c]of moves){
+      const nb=board.map(row=>[...row]);const fl=getFlips(nb,r,c,WHITE);
+      nb[r][c]=WHITE;fl.forEach(([fr,fc])=>nb[fr][fc]=WHITE);
+      const s=minimax(nb,depth-1,-Infinity,Infinity,false,WHITE);
+      if(s>best){best=s;bestMoves=[[r,c]];}else if(s===best)bestMoves.push([r,c]);
+    }
+    chosen=bestMoves[Math.floor(Math.random()*bestMoves.length)];
+  }
+  const[r,c]=chosen;const flips=getFlips(board,r,c,WHITE);
+  board[r][c]=WHITE;flips.forEach(([fr,fc])=>board[fr][fc]=WHITE);
+  animateFlips([[r,c],...flips]);
+  turn=BLACK;cpuThinking=false;updateAll();
+}
+function placeDisc(r,c){
+  if(gameOver||turn!==BLACK||cpuThinking||board[r][c]!==EMPTY)return;
+  const flips=getFlips(board,r,c,BLACK);if(!flips.length)return;
+  board[r][c]=BLACK;flips.forEach(([fr,fc])=>board[fr][fc]=BLACK);
+  animateFlips([[r,c],...flips]);
+  turn=WHITE;updateAll();
+  setTimeout(()=>{
+    if(gameOver)return;
+    const wm=validMoves(board,WHITE);
+    if(!wm.length){
+      const bm=validMoves(board,BLACK);
+      if(!bm.length){endGame();return;}
+      setStatus('CPUがパスしました。あなたの番です','あなた');turn=BLACK;renderBoard();setSideActive();return;
+    }
+    cpuThinking=true;setStatus('CPUが考えています ...','CPU');
+    const delay=difficulty==='easy'?300:difficulty==='normal'?600:900;
+    setTimeout(()=>{cpuMove();},delay);
+  },400);
+}
+function animateFlips(cells){
+  cells.forEach(([r,c],i)=>{
+    setTimeout(()=>{
+      const el=document.querySelector(`.cell[data-r="${r}"][data-c="${c}"] .disc`);
+      if(el){el.classList.remove('flip');void el.offsetWidth;el.classList.add('flip');}
+    },i*45);
+  });
+}
+function updateAll(){
+  renderBoard();updateScore();
+  if(!gameOver){
+    const bm=validMoves(board,BLACK);const wm=validMoves(board,WHITE);
+    if(!bm.length&&!wm.length){endGame();return;}
+    if(turn===BLACK){
+      if(!bm.length){
+        setStatus('パス！CPUの番です','CPU');turn=WHITE;cpuThinking=true;
+        const delay=difficulty==='easy'?300:difficulty==='normal'?600:900;
+        setTimeout(()=>{cpuMove();},delay);
+      }else{setStatus('あなたの番です','あなた');}
+    }
+  }
+  setSideActive();
+}
+function setStatus(msg,who){
+  const el=document.getElementById('status');
+  if(who&&msg.includes(who)){
+    el.innerHTML=`<span class="turn-indicator">${who}</span>&nbsp;&nbsp;${msg.replace(who,'').trim()}`;
+  }else{el.textContent=msg;}
+}
+function setSideActive(){
+  document.getElementById('side-black').classList.toggle('active',turn===BLACK&&!cpuThinking);
+  document.getElementById('side-white').classList.toggle('active',turn===WHITE||cpuThinking);
+}
+function updateScore(){
+  document.getElementById('score-black').textContent=countColor(board,BLACK);
+  document.getElementById('score-white').textContent=countColor(board,WHITE);
+}
+function endGame(){
+  gameOver=true;
+  const b=countColor(board,BLACK),w=countColor(board,WHITE);
+  let titleTxt,msg;
+  if(b>w){titleTxt='YOU WIN';msg=`あなた ${b} 対 CPU ${w}\nおめでとうございます！`;}
+  else if(w>b){titleTxt='CPU WIN';msg=`CPU ${w} 対 あなた ${b}\nもう一度挑戦しましょう！`;}
+  else{titleTxt='DRAW';msg=`${b} 対 ${w}\n引き分けです！`;}
+  document.getElementById('modal-title').textContent=titleTxt;
+  document.getElementById('modal-result').innerHTML=msg.replace('\n','<br>');
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('status').textContent=`ゲーム終了  あなた ${b} · CPU ${w}`;
+}
+function renderBoard(){
+  const hintSet=new Set(showHints&&!cpuThinking&&turn===BLACK?validMoves(board,BLACK).map(([r,c])=>`${r},${c}`):[]);
+  const el=document.getElementById('board');el.innerHTML='';
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const cell=document.createElement('div');
+      cell.className='cell'+(hintSet.has(`${r},${c}`)?' hint':'');
+      cell.dataset.r=r;cell.dataset.c=c;
+      cell.addEventListener('click',()=>placeDisc(r,c));
+      if(board[r][c]!==EMPTY){
+        const disc=document.createElement('div');
+        disc.className='disc '+(board[r][c]===BLACK?'black':'white');
+        cell.appendChild(disc);
+      }
+      el.appendChild(cell);
+    }
+  }
+}
+function newGame(){
+  initBoard();updateAll();
+  document.getElementById('status').textContent='あなたの番です';
+  document.getElementById('side-black').classList.add('active');
+  document.getElementById('side-white').classList.remove('active');
+}
+function toggleHints(){
+  showHints=!showHints;
+  document.getElementById('hint-state').textContent=showHints?'ON':'OFF';
+  renderBoard();
+}
+function setDiff(d,btn){
+  difficulty=d;
+  document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+initBoard();renderBoard();updateScore();setSideActive();
+document.getElementById('side-black').classList.add('active');
+</script>
+</body>
+</html>
